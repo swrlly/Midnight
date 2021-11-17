@@ -2,6 +2,10 @@
 
 A MiTM proxy server for Darza's Dominion, PC version.
 
+<p align="center">
+  <img src="https://cdn.discordapp.com/attachments/864466895100706816/910541151491223572/unknown.png" />
+</p>
+
 # How to use
 
 Coming soon.
