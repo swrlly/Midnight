@@ -20,6 +20,14 @@ class Hello(Packet):
         self.loadID = r.ReadInt64()
         self.assetsID = r.ReadInt32()
 
+    def Write(self, w):
+        w.WriteString8(self.accessToken)
+        w.WriteString8(self.version)
+        w.WriteInt32(self.assetSum)
+        w.WriteByte(self.platform)
+        w.WriteInt64(self.loadID)
+        w.WriteInt32(self.assetsID)
+
     def GetType(self):
         return super().GetType()
 

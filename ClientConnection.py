@@ -1,6 +1,7 @@
 import socket
 import struct
 import select
+import random
 import time
 import json
 import traceback
@@ -14,7 +15,9 @@ class ClientConnection:
     def __init__(self, pm: PluginManager):
 
         # some parameters used throught the game
-        self.remoteHostAddr = "18.237.196.27"
+        # self.remoteHostAddr = "54.189.133.16"
+        self.remoteHostAddr = "54.70.101.228"
+        #self.remoteHostAddr = "18.237.196.27"
         self.remoteHostPort = 6410
         # variables we use to keep track of client's state
         self.reconnecting = False
@@ -23,7 +26,7 @@ class ClientConnection:
         self.serverSocket = None
         self.pluginManager = pm
 
-        self.debug = False
+        self.debug = True
         self.killSignal = False
 
         # stuff to ignore when debugging
@@ -43,7 +46,6 @@ class ClientConnection:
         self.gameSocket = None
         self.serverSocket = None
 
-    # we can just recon lazily as Valor has a static ip for all instances
     def Reconnect(self):
         self.ConnectRemote()
         self.connected = True
@@ -109,7 +111,6 @@ class ClientConnection:
 
         p = None
         send = True
-        modified = False
         reassembledPacket = None
 
         # given packetID + data, return the processed packet
@@ -133,7 +134,19 @@ class ClientConnection:
         if packetID == GmPacketTypes.Hello:
             p, send = self.RoutePacket(p, send, self.OnHello)
 
-        reassembledPacket = WritePacket(p) if modified else WritePacketRaw(header, data)
+        elif packetID == GmPacketTypes.Chat:
+            p, send = self.RoutePacket(p, send, self.OnChat)
+
+        elif packetID == GmPacketTypes.Move:
+            p, send = self.RoutePacket(p, send, self.OnMove)
+
+        elif packetID == GmPacketTypes.Shoot:
+            p, send = self.RoutePacket(p, send, self.OnShoot)
+
+        elif packetID == GmPacketTypes.Swap:
+            p, send = self.RoutePacket(p, send, self.OnSwap)
+
+        reassembledPacket = reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToServer(reassembledPacket)
         return True
 
@@ -177,7 +190,6 @@ class ClientConnection:
 
         p = None
         send = True
-        modified = False
         reassembledPacket = None
 
         # given packetID + data, return the corresponding packet type, already read.
@@ -202,7 +214,7 @@ class ClientConnection:
             modified = True
             p, send = self.RoutePacket(p, send, self.OnReconnect)
 
-        reassembledPacket = WritePacket(p) if modified else WritePacketRaw(header, data)
+        reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToClient(reassembledPacket)
         return True
 
@@ -230,7 +242,7 @@ class ClientConnection:
                 if self.pluginManager.plugins[plugin]:
                     # at each step, we are editing the packet on the wire
                     # important: make sure you're spelling your class methods correctly.
-                    p, send = getattr(plugin, "on" + type(p).__name__)(self, p, send)
+                    p, send = getattr(plugin, "On" + type(p).__name__)(self, p, send)
 
         return p, send
 
@@ -299,12 +311,32 @@ def OnReconnect(self, p: Reconnect, send: bool) -> (Reconnect, bool):
     self.reconnecting = True
     self.remoteHostAddr = p.host
     self.remoteHostPort = p.port
-    p.host = b"127.0.0.1"
+    p.host = "127.0.0.1"
     p.port = 6410
     return p, send
 
 @extends(ClientConnection)
 def OnHello(self, p: Hello, send: bool) -> (Hello, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnChat(self, p: Chat, send: bool) -> (Chat, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnShoot(self, p: Shoot, send: bool) -> (Shoot, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnSwap(self, p: Swap, send: bool) -> (Swap, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnMove(self, p: Move, send: bool) -> (Move, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnProjectilesAck(self, p: ProjectilesAck, send: bool) -> (ProjectilesAck, bool):
     return p, send
 
 @extends(ClientConnection)

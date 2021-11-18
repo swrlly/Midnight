@@ -8,3 +8,7 @@ from .Escape import Escape
 from .Hello import Hello
 from .Hit import Hit
 from .Move import Move
+from .ProjectilesAck import ProjectilesAck
+from .Shoot import Shoot
+from .Swap import Swap
+from .StartUpdate import StartUpdate

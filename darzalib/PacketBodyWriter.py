@@ -17,6 +17,9 @@ class PacketBodyWriter:
     def WriteInt32(self, data):
         self.buffer += struct.pack("<i", data)
 
+    def WriteInt64(self, data):
+        self.buffer += struct.pack("<q", data)
+
     def WriteUInt32(self, data):
         self.buffer += struct.pack("<I", data)
 
@@ -26,19 +29,19 @@ class PacketBodyWriter:
     def WriteFloat(self, data):
         self.buffer += struct.pack("<f", data)
 
-    def WriteString8(self, data):
+    def WriteString8(self, data: str):
         self.WriteByte(len(data))
-        self.buffer += struct.pack("<{}s".format(len(data)), data)
+        self.buffer += struct.pack("<{}s".format(len(data)), data.encode('utf-8'))
 
-    def WriteString16(self, data):
+    def WriteString16(self, data: str):
         self.WriteShort(len(data))
-        self.buffer += struct.pack("<{}s".format(len(data)), data)
+        self.buffer += struct.pack("<{}s".format(len(data)), data.encode('utf-8'))
 
-    def WriteString32(self, data):
+    def WriteString32(self, data: str):
         self.WriteInt32(len(data))
-        self.buffer += struct.pack("<{}s".format(len(data)), data)
+        self.buffer += struct.pack("<{}s".format(len(data)), data.encode('utf-8'))
 
-    def WriteStringBytes(self, data):
+    def WriteStringBytes(self, data: bytearray):
         self.buffer += struct.pack("<{}s".format(len(data)), data)
 
     def WriteHeader(self, id):
