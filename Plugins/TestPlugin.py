@@ -43,7 +43,7 @@ class TestPlugin(PluginInterface):
 
 	def onHello(self, clientConnection: ClientConnection, packet: Hello, send: bool) -> (Hello, bool):
 		color = GameColor(255, 48, 187, 255)
-		clientConnection.CreateNotification(color, b"https://github.com/swrlly/Midnight") 
+		clientConnection.CreateNotification(color, b"Welcome to Midnight!") 
 		return (packet, send)
 
 	def getAuthor(self):

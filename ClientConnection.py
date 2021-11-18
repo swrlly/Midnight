@@ -242,13 +242,12 @@ class ClientConnection:
         while True:
             try:
 
+                ready = select.select([self.gameSocket, self.serverSocket], [], [])[0]
+
                 if self.reconnecting:
-                    time.sleep(0.5)
                     self.reset()
                     continue
-
-                ready = select.select([self.gameSocket, self.serverSocket], [], [])[0]
-                    
+  
                 # client has data ready to send to server
                 if self.gameSocket in ready:
                     self.ListenToClient()
