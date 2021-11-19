@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class BiomeDisplay(Packet):
+class BiomeDisplay(IPacket):
     
     "Sent by client to escape to the nexus (or if you're in the nexus, go to character select)"
 

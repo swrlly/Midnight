@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class ProjectilesAck(Packet):
+class ProjectilesAck(IPacket):
     
     "Sent by client to acknowledge receiving a Projectiles packet"
 

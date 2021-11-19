@@ -1,8 +1,8 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 from ..DataStructures.GameColor import GameColor
 from ..DataStructures.ChatItem import ChatItem
 
-class Chats(Packet):
+class Chats(IPacket):
     
     "Sent by client to escape to the nexus (or if you're in the nexus, go to character select)"
 

@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Chat(Packet):
+class Chat(IPacket):
     
     "Packet representing player message sent from chatbar"
 

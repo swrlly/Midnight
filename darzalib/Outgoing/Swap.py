@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Swap(Packet):
+class Swap(IPacket):
     
     "Sent by client to swap items"
 

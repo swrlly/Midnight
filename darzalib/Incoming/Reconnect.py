@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Reconnect(Packet):
+class Reconnect(IPacket):
     
     "Sent by server to inform client of the new ip/host of the new location to connect to"
 

@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class AllyHit(Packet):
+class AllyHit(IPacket):
     
     "Sent by client when an ally has been hit by a projectile"
 

@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class StartUpdate(Packet):
+class StartUpdate(IPacket):
     
     "Sent by client to receive the first Update packet"
 

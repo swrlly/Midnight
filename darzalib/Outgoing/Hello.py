@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Hello(Packet):
+class Hello(IPacket):
 
     "Sent by client to initiate the handshake."
 

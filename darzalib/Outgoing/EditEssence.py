@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class EditEssence(Packet):
+class EditEssence(IPacket):
     
     "Sent by client to ?"
 

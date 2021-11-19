@@ -1,7 +1,7 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 from ..DataStructures.GamePoint import GamePoint
 
-class Move(Packet):
+class Move(IPacket):
     
     "Sent by client to inform server of our new location"
 

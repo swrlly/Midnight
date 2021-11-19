@@ -40,6 +40,10 @@ def main():
         return
 
     clientConnection = ClientConnection(plugins)
+    print("[Initializer]: Loading packet hooks...")
+    if not clientConnection.InitializePacketHooks():
+        print("Unable to initialize packet hooks. Shutting down")
+        return
     proxy = Proxy(clientConnection)
 
     

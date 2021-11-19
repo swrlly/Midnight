@@ -6,6 +6,8 @@ import time
 import json
 import traceback
 import math
+import re
+import glob
 
 from PluginManager import *
 from darzalib.PacketUtil import *
@@ -13,6 +15,8 @@ from darzalib.PacketUtil import *
 class ClientConnection:
 
     def __init__(self, pm: PluginManager):
+
+        self.debug = False
 
         # some parameters used throught the game
         # self.remoteHostAddr = "54.189.133.16"
@@ -24,18 +28,33 @@ class ClientConnection:
         self.connected = False
         self.gameSocket = None
         self.serverSocket = None
-        self.pluginManager = pm
-
-        self.debug = True
         self.killSignal = False
+        self.pluginManager = pm
+        
+        self.clientPacketHooks = {}
 
         # stuff to ignore when debugging
         self.ignoreIn = [GmPacketTypes.HealthUpdate, GmPacketTypes.Ping, GmPacketTypes.Tiles, GmPacketTypes.ChallengeUpdated, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Projectiles]
         self.ignoreOut = [GmPacketTypes.AllyHit, GmPacketTypes.CheckPing, GmPacketTypes.Pong, GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.ProjectilesAck]
-   
+
+    def InitializePacketHooks(self) -> bool:
+        """
+        Make dictionaries of {GmPacketType: function to call}
+        """
+
+        # parse outgoing
+        for name in glob.glob("darzalib/Outgoing/*[A-z].py"):
+            tok = re.split("\\\\|/", name)[-1][:-3]
+            self.clientPacketHooks.update({getattr(GmPacketTypes, tok) : getattr(self, "On" + tok)})
+
+        return True
+
+
     # disconnect the client from the proxy
     # disconnect the proxy from the server
     def Disconnect(self):
+        #self.serverSocket.recv(10000)
+        #self.gameSocket.recv(10000)
         self.connected = False
         if self.serverSocket:
             self.serverSocket.shutdown(socket.SHUT_RDWR)
@@ -127,27 +146,11 @@ class ClientConnection:
             except:
                 print("Got unknown packet from client, id", packetID)
 
-        #########################
-        ######### Hooks #########
-        #########################
+        # hook packets
+        # will fail if a hook is not implemented but packetType is present
 
-        if packetID == GmPacketTypes.Hello:
-            p, send = self.RoutePacket(p, send, self.OnHello)
-
-        elif packetID == GmPacketTypes.Chat:
-            p, send = self.RoutePacket(p, send, self.OnChat)
-
-        elif packetID == GmPacketTypes.Hit:
-            p, send = self.RoutePacket(p, send, self.OnHit)
-
-        elif packetID == GmPacketTypes.Move:
-            p, send = self.RoutePacket(p, send, self.OnMove)
-
-        elif packetID == GmPacketTypes.Shoot:
-            p, send = self.RoutePacket(p, send, self.OnShoot)
-
-        elif packetID == GmPacketTypes.Swap:
-            p, send = self.RoutePacket(p, send, self.OnSwap)
+        if packetID in self.clientPacketHooks:
+            p, send = self.RoutePacket(p, send, self.clientPacketHooks[packetID])
 
         reassembledPacket = reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToServer(reassembledPacket)
@@ -230,9 +233,9 @@ class ClientConnection:
     :param onPacketType: The implemented callback inside a plugin when this packet type is encountered.
         This function will be defined within the Client class.
 
-    returns: (Packet, send)
+    returns: (PacketClass, send)
     """
-    def RoutePacket(self, p, send, onPacketType) -> (Packet, bool):
+    def RoutePacket(self, p, send, onPacketType):
 
         p, send = onPacketType(p, send)
 
@@ -319,7 +322,11 @@ def OnReconnect(self, p: Reconnect, send: bool) -> (Reconnect, bool):
     return p, send
 
 @extends(ClientConnection)
-def OnHello(self, p: Hello, send: bool) -> (Hello, bool):
+def OnActivateObject(self, p: ActivateObject, send: bool) -> (ActivateObject, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnAllyHit(self, p: AllyHit, send: bool) -> (AllyHit, bool):
     return p, send
 
 @extends(ClientConnection)
@@ -327,15 +334,55 @@ def OnChat(self, p: Chat, send: bool) -> (Chat, bool):
     return p, send
 
 @extends(ClientConnection)
-def OnShoot(self, p: Shoot, send: bool) -> (Shoot, bool):
+def OnCheckPing(self, p: CheckPing, send: bool) -> (CheckPing, bool):
     return p, send
 
 @extends(ClientConnection)
-def OnHit(self, p: Swap, send: bool) -> (Swap, bool):
+def OnCreate(self, p: Create, send: bool) -> (Create, bool):
     return p, send
 
 @extends(ClientConnection)
-def OnSwap(self, p: Swap, send: bool) -> (Swap, bool):
+def OnEditEssence(self, p: EditEssence, send: bool) -> (EditEssence, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnEscape(self, p: Escape, send: bool) -> (Escape, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnExchangeEssence(self, p: ExchangeEssence, send: bool) -> (ExchangeEssence, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnExchangeGift(self, p: ExchangeGift, send: bool) -> (ExchangeGift, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnGetGuildList(self, p: GetGuildList, send: bool) -> (GetGuildList, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnGotoResp(self, p: GotoResp, send: bool) -> (GotoResp, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnHello(self, p: Hello, send: bool) -> (Hello, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnHit(self, p: Hit, send: bool) -> (Hit, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnLoad(self, p: Load, send: bool) -> (Load, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnMapInfoAck(self, p: MapInfoAck, send: bool) -> (MapInfoAck, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnMessage(self, p: Message, send: bool) -> (Message, bool):
     return p, send
 
 @extends(ClientConnection)
@@ -343,7 +390,31 @@ def OnMove(self, p: Move, send: bool) -> (Move, bool):
     return p, send
 
 @extends(ClientConnection)
+def OnPong(self, p: Pong, send: bool) -> (Pong, bool):
+    return p, send
+
+@extends(ClientConnection)
 def OnProjectilesAck(self, p: ProjectilesAck, send: bool) -> (ProjectilesAck, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnShoot(self, p: Shoot, send: bool) -> (Shoot, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnStartUpdate(self, p: StartUpdate, send: bool) -> (StartUpdate, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnSwap(self, p: Swap, send: bool) -> (Swap, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnUpdateAck(self, p: UpdateAck, send: bool) -> (UpdateAck, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnUseItem(self, p: UseItem, send: bool) -> (UseItem, bool):
     return p, send
 
 @extends(ClientConnection)

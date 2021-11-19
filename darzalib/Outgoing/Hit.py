@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Hit(Packet):
+class Hit(IPacket):
     
     "Sent by client to inform server of player hitting enemy or enemy hitting you"
 

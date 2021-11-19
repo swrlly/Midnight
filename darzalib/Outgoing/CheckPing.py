@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class CheckPing(Packet):
+class CheckPing(IPacket):
     
     "Sent by client to ?"
 

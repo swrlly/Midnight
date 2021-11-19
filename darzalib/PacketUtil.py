@@ -5,8 +5,6 @@ from .DataStructures.__init__ import *
 from .Outgoing.__init__ import *
 from .Incoming.__init__ import *
 
-from .Packet import Packet
-
 def WritePacketRaw(header, data):
     """
     Given two raw bytearrays, return a bytearray representing the entire packet

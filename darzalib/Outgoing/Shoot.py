@@ -1,7 +1,7 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 from ..DataStructures.GamePoint import GamePoint
 
-class Shoot(Packet):
+class Shoot(IPacket):
     
     "Sent by client when you shoot with primary weapon"
 

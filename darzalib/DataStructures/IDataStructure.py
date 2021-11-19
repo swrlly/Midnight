@@ -4,4 +4,8 @@ class IDataStructure:
         pass
 
     def PrintString(self):
-        print(" ".join([k + " {}".format(v) for k, v in vars(self).items()]))
+        itr = vars(self).items()
+        baseTypes = set([str, float, int, list])
+        print(" ".join([k + " {}".format(v) for k, v in itr if type(v) in baseTypes]))
+        for k, v in itr:
+            if type(v) not in baseTypes: v.PrintString()

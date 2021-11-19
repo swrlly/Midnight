@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class Create(Packet):
+class Create(IPacket):
     
     "Sent by client to create a new character"
 

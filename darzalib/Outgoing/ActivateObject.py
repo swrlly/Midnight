@@ -1,6 +1,6 @@
-from ..Packet import Packet
+from ..IPacket import IPacket
 
-class ActivateObject(Packet):
+class ActivateObject(IPacket):
     
     "Sent by client to activate an object, such as using a portal/buying an item"
 
