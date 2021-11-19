@@ -137,6 +137,9 @@ class ClientConnection:
         elif packetID == GmPacketTypes.Chat:
             p, send = self.RoutePacket(p, send, self.OnChat)
 
+        elif packetID == GmPacketTypes.Hit:
+            p, send = self.RoutePacket(p, send, self.OnHit)
+
         elif packetID == GmPacketTypes.Move:
             p, send = self.RoutePacket(p, send, self.OnMove)
 
@@ -325,6 +328,10 @@ def OnChat(self, p: Chat, send: bool) -> (Chat, bool):
 
 @extends(ClientConnection)
 def OnShoot(self, p: Shoot, send: bool) -> (Shoot, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnHit(self, p: Swap, send: bool) -> (Swap, bool):
     return p, send
 
 @extends(ClientConnection)
