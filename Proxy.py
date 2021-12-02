@@ -50,7 +50,7 @@ def main():
     proxy.StartProxy()
     print("[Initializer]: Started proxy.")
     clientConnection.ConnectRemote()
-    proxy.clientConnection.Listen()
+    clientConnection.Listen()
     
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ class ClientConnection:
         self.debug = False
 
         # some parameters used throught the game
-        # self.remoteHostAddr = "54.189.133.16"
+        #self.remoteHostAddr = "54.189.133.16"
         self.remoteHostAddr = "54.70.101.228"
         #self.remoteHostAddr = "18.237.196.27"
         self.remoteHostPort = 6410
@@ -34,7 +34,7 @@ class ClientConnection:
         self.clientPacketHooks = {}
 
         # stuff to ignore when debugging
-        self.ignoreIn = [GmPacketTypes.HealthUpdate, GmPacketTypes.Ping, GmPacketTypes.Tiles, GmPacketTypes.ChallengeUpdated, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Projectiles]
+        self.ignoreIn = [GmPacketTypes.HealthUpdate, GmPacketTypes.Ping, GmPacketTypes.Tiles,  GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Projectiles]
         self.ignoreOut = [GmPacketTypes.AllyHit, GmPacketTypes.CheckPing, GmPacketTypes.Pong, GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.ProjectilesAck]
 
     def InitializePacketHooks(self) -> bool:

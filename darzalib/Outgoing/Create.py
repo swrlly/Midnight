@@ -6,7 +6,7 @@ class Create(IPacket):
 
     def __init__(self):
         self.objectID = 0
-        self.charcterType = 0
+        self.characterType = 0
         
     def Read(self, r):
         self.objectID = r.ReadInt32()

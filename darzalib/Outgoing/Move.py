@@ -30,4 +30,3 @@ class Move(IPacket):
 
     def PrintString(self):
         super().PrintString()
-        self.position.PrintString()
