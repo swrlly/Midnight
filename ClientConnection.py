@@ -16,12 +16,10 @@ class ClientConnection:
 
     def __init__(self, pm: PluginManager):
 
-        self.debug = False
+        self.debug = True
 
         # some parameters used throught the game
-        #self.remoteHostAddr = "54.189.133.16"
-        self.remoteHostAddr = "54.70.101.228"
-        #self.remoteHostAddr = "18.237.196.27"
+        self.remoteHostAddr = "54.219.230.109"
         self.remoteHostPort = 6410
         # variables we use to keep track of client's state
         self.reconnecting = False
@@ -34,8 +32,8 @@ class ClientConnection:
         self.clientPacketHooks = {}
 
         # stuff to ignore when debugging
-        self.ignoreIn = [GmPacketTypes.HealthUpdate, GmPacketTypes.Ping, GmPacketTypes.Tiles,  GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Projectiles]
-        self.ignoreOut = [GmPacketTypes.AllyHit, GmPacketTypes.CheckPing, GmPacketTypes.Pong, GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.ProjectilesAck]
+        self.ignoreIn = []#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
+        self.ignoreOut = []#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
 
     def InitializePacketHooks(self) -> bool:
         """
@@ -45,7 +43,10 @@ class ClientConnection:
         # parse outgoing
         for name in glob.glob("darzalib/Outgoing/*[A-z].py"):
             tok = re.split("\\\\|/", name)[-1][:-3]
-            self.clientPacketHooks.update({getattr(GmPacketTypes, tok) : getattr(self, "On" + tok)})
+            try:
+                self.clientPacketHooks.update({getattr(GmPacketTypes, tok) : getattr(self, "On" + tok)})
+            except:
+                print("Failed to initialize packet hook for {}".format(tok))
 
         return True
 
@@ -53,8 +54,6 @@ class ClientConnection:
     # disconnect the client from the proxy
     # disconnect the proxy from the server
     def Disconnect(self):
-        #self.serverSocket.recv(10000)
-        #self.gameSocket.recv(10000)
         self.connected = False
         if self.serverSocket:
             self.serverSocket.shutdown(socket.SHUT_RDWR)
@@ -84,7 +83,7 @@ class ClientConnection:
         self.serverSocket.close()
 
     # restart entire connection
-    def reset(self):
+    def Reset(self):
 
         # fix this later :skull:
         self.Disconnect()
@@ -103,13 +102,19 @@ class ClientConnection:
         
         # if server sent nothing, just return
         if len(header) == 0 or self.reconnecting:
-            self.reset()
+            self.Reset()
             return
         
         # if server was not ready to send 5 bytes
         while leftToRead > 0:
             header += self.gameSocket.recv(leftToRead)
             leftToRead -= len(header)
+
+        if header[0] == 4 and header[1] == 1:
+            rest = self.gameSocket.recv(10)
+            header = header + rest
+            self.gameSocket.send(bytearray([4, 90, *header[2:8]]))
+            return
 
         packetID = header[4]
         # packet length in little endian format, subtract 1 since header counts in length
@@ -131,10 +136,11 @@ class ClientConnection:
         p = None
         send = True
         reassembledPacket = None
+        
 
         # given packetID + data, return the processed packet
         try:
-            p = ProcessPacket(packetID, data)
+            p = ProcessPacket(packetID, data, False)
         except:
             pass
         
@@ -142,17 +148,20 @@ class ClientConnection:
             try:
                 if packetID not in self.ignoreOut:
                     print("Client sent:", GmPacketTypes.reverseDict[packetID])
+                    #print(data)
                     if p is not None: p.PrintString()
-            except:
-                print("Got unknown packet from client, id", packetID)
+            except Exception as e:
+                pass
+                #print(e)
+                #print("Got unknown packet from client, id", packetID)
+                #print("Client: ", packetID, header, data)
+                
 
         # hook packets
         # will fail if a hook is not implemented but packetType is present
-
-        if packetID in self.clientPacketHooks:
+        if packetID in self.clientPacketHooks and p is not None:
             p, send = self.RoutePacket(p, send, self.clientPacketHooks[packetID])
-
-        reassembledPacket = reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
+        reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToServer(reassembledPacket)
         return True
 
@@ -169,7 +178,7 @@ class ClientConnection:
         
         # if server sent nothing, just return
         if len(header) == 0 or self.reconnecting:
-            self.reset()
+            self.Reset()
             return
         
         # if server was not ready to send 5 bytes
@@ -187,6 +196,8 @@ class ClientConnection:
             data += buf
             expectedPacketLength -= len(buf)
 
+        #print(packetID, header, data)
+
         self.ProcessServerPacket(packetID, header, data)
 
     def ProcessServerPacket(self, packetID: int, header: bytearray, data: bytearray):
@@ -197,29 +208,31 @@ class ClientConnection:
         p = None
         send = True
         reassembledPacket = None
-
+        
         # given packetID + data, return the corresponding packet type, already read.
         try:
-            p = ProcessPacket(packetID, data)
-        except:
-            pass
-
+            p = ProcessPacket(packetID, data, False)
+        except Exception as e:
+            traceback.print_exc()
+        
         if self.debug:
             try:
                 if packetID not in self.ignoreIn:
                     print("Server sent:", GmPacketTypes.reverseDict[packetID])
+                    #print(data)
                     if p is not None: p.PrintString()
             except:
                 print("Got unknown packet from server, id", packetID)
+                print("Server: ", packetID, header, data)
 
         #########################
         ######### Hooks #########
         #########################
 
         if packetID == GmPacketTypes.Reconnect:
-            modified = True
+            p.PrintString()
             p, send = self.RoutePacket(p, send, self.OnReconnect)
-
+        #p = None
         reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToClient(reassembledPacket)
         return True
@@ -263,7 +276,7 @@ class ClientConnection:
                 ready = select.select([self.gameSocket, self.serverSocket], [], [])[0]
 
                 if self.reconnecting:
-                    self.reset()
+                    self.Reset()
                     continue
   
                 # client has data ready to send to server
@@ -275,17 +288,17 @@ class ClientConnection:
 
             except ConnectionAbortedError as e:
                 print("Connection was aborted:", e)
-                self.reset()
+                self.Reset()
 
             except ConnectionResetError as e:
                 print("Connection was reset")
-                self.reset()
+                self.Reset()
 
             except KeyboardInterrupt:
                 print("User aborted. Shutting down proxy.")
                 self.connected = False
                 self.killSignal = True
-                self.reset()
+                self.Reset()
                 return
 
             except OSError as e:
