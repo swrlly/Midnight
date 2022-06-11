@@ -1,0 +1,3 @@
+[submodule "darzalib"]
+	path = darzalib
+	url = https://github.com/swrlly/darzalib.git

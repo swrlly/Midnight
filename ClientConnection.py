@@ -16,7 +16,7 @@ class ClientConnection:
 
     def __init__(self, pm: PluginManager):
 
-        self.debug = True
+        self.debug = False
 
         # some parameters used throught the game
         self.remoteHostAddr = "54.219.230.109"
@@ -28,12 +28,14 @@ class ClientConnection:
         self.serverSocket = None
         self.killSignal = False
         self.pluginManager = pm
-        
         self.clientPacketHooks = {}
 
+        self.nextX = 0
+        self.nextY = 0
+
         # stuff to ignore when debugging
-        self.ignoreIn = []#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
-        self.ignoreOut = []#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
+        self.ignoreIn = [GmPacketTypes.Tiles]#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
+        self.ignoreOut = [GmPacketTypes.UpdateAck, GmPacketTypes.StartUpdate]#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
 
     def InitializePacketHooks(self) -> bool:
         """
@@ -49,7 +51,6 @@ class ClientConnection:
                 print("Failed to initialize packet hook for {}".format(tok))
 
         return True
-
 
     # disconnect the client from the proxy
     # disconnect the proxy from the server
@@ -136,7 +137,6 @@ class ClientConnection:
         p = None
         send = True
         reassembledPacket = None
-        
 
         # given packetID + data, return the processed packet
         try:
@@ -148,13 +148,11 @@ class ClientConnection:
             try:
                 if packetID not in self.ignoreOut:
                     print("Client sent:", GmPacketTypes.reverseDict[packetID])
-                    #print(data)
                     if p is not None: p.PrintString()
             except Exception as e:
-                pass
-                #print(e)
-                #print("Got unknown packet from client, id", packetID)
-                #print("Client: ", packetID, header, data)
+                print(e)
+                print("Got unknown packet from client, id", packetID)
+                print("Client: ", packetID, header, data)
                 
 
         # hook packets
@@ -196,8 +194,6 @@ class ClientConnection:
             data += buf
             expectedPacketLength -= len(buf)
 
-        #print(packetID, header, data)
-
         self.ProcessServerPacket(packetID, header, data)
 
     def ProcessServerPacket(self, packetID: int, header: bytearray, data: bytearray):
@@ -213,15 +209,16 @@ class ClientConnection:
         try:
             p = ProcessPacket(packetID, data, False)
         except Exception as e:
+            print(data)
             traceback.print_exc()
-        
+
         if self.debug:
             try:
                 if packetID not in self.ignoreIn:
                     print("Server sent:", GmPacketTypes.reverseDict[packetID])
-                    #print(data)
                     if p is not None: p.PrintString()
             except:
+                traceback.print_exc()
                 print("Got unknown packet from server, id", packetID)
                 print("Server: ", packetID, header, data)
 
@@ -232,7 +229,7 @@ class ClientConnection:
         if packetID == GmPacketTypes.Reconnect:
             p.PrintString()
             p, send = self.RoutePacket(p, send, self.OnReconnect)
-        #p = None
+
         reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToClient(reassembledPacket)
         return True
@@ -400,6 +397,8 @@ def OnMessage(self, p: Message, send: bool) -> (Message, bool):
 
 @extends(ClientConnection)
 def OnMove(self, p: Move, send: bool) -> (Move, bool):
+    self.nextX = p.position.x
+    self.nextY = p.position.y
     return p, send
 
 @extends(ClientConnection)
