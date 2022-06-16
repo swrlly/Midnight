@@ -1,3 +1,5 @@
+import logging
+
 class PluginManager:
 
 
@@ -6,6 +8,7 @@ class PluginManager:
 		self.plugins = {}
 		# key is packet type, value is set of plugin classes (key for self.plugins)
 		self.hooks = {}
+		self.logger = logging.getLogger("PluginManager")
 
 	"""
 	initialize all plugins.
@@ -28,11 +31,11 @@ class PluginManager:
 						else:
 							self.plugins.update({eval(t + "()") : False})
 				except Exception as e:
-					print("There was an error when loading plugins. Make sure you follow the naming convention when writing your own plugins.")
-					print("Error:", e)
+					self.logger.warn("There was an error when loading plugins. Make sure you follow the naming convention when writing your own plugins.")
+					self.logger.warn("Error:", e)
 					return False
 
-		print("[Initializer]: Successfully loaded {} plugins.".format(len(self.plugins)))
+		self.logger.info("[Initializer]: Successfully loaded {} plugins.".format(len(self.plugins)))
 		return True
 
 		

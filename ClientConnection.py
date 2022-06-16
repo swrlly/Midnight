@@ -12,14 +12,17 @@ import glob
 from PluginManager import *
 from darzalib.PacketUtil import *
 
+import logging
+
 class ClientConnection:
 
     def __init__(self, pm: PluginManager):
 
-        self.debug = False
+        self.debug = True
+        self.firstUpdate = False
 
         # some parameters used throught the game
-        self.remoteHostAddr = "54.219.230.109"
+        self.remoteHostAddr = "54.219.230.109"#"18.197.125.211"#
         self.remoteHostPort = 6410
         # variables we use to keep track of client's state
         self.reconnecting = False
@@ -29,13 +32,15 @@ class ClientConnection:
         self.killSignal = False
         self.pluginManager = pm
         self.clientPacketHooks = {}
-
         self.nextX = 0
         self.nextY = 0
 
         # stuff to ignore when debugging
-        self.ignoreIn = [GmPacketTypes.Tiles]#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
-        self.ignoreOut = [GmPacketTypes.UpdateAck, GmPacketTypes.StartUpdate]#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
+        self.ignoreIn = [GmPacketTypes.Tiles, GmPacketTypes.Ping]#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
+        self.ignoreOut = [GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.Pong]#[GmPacketTypes.UpdateAck, GmPacketTypes.StartUpdate]#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
+        self.printOut = [GmPacketTypes.Create, GmPacketTypes.Load]
+        self.printIn = [GmPacketTypes.CreateResp]
+        self.logger = logging.getLogger("Client")
 
     def InitializePacketHooks(self) -> bool:
         """
@@ -48,7 +53,7 @@ class ClientConnection:
             try:
                 self.clientPacketHooks.update({getattr(GmPacketTypes, tok) : getattr(self, "On" + tok)})
             except:
-                print("Failed to initialize packet hook for {}".format(tok))
+                self.logger.info("Failed to initialize packet hook for {}".format(tok))
 
         return True
 
@@ -143,17 +148,17 @@ class ClientConnection:
             p = ProcessPacket(packetID, data, False)
         except:
             pass
+
         
         if self.debug:
             try:
                 if packetID not in self.ignoreOut:
-                    print("Client sent:", GmPacketTypes.reverseDict[packetID])
-                    if p is not None: p.PrintString()
+                    self.logger.info("Client sent: " + GmPacketTypes.reverseDict[packetID])
+                    if packetID in self.printOut:
+                        p.PrintString()
             except Exception as e:
-                print(e)
-                print("Got unknown packet from client, id", packetID)
-                print("Client: ", packetID, header, data)
-                
+                self.logger.info(e)
+                self.logger.info("Got unknown packet from client, id {}".format(packetID))
 
         # hook packets
         # will fail if a hook is not implemented but packetType is present
@@ -209,18 +214,17 @@ class ClientConnection:
         try:
             p = ProcessPacket(packetID, data, False)
         except Exception as e:
-            print(data)
+            self.logger.info(data)
             traceback.print_exc()
-
         if self.debug:
             try:
                 if packetID not in self.ignoreIn:
-                    print("Server sent:", GmPacketTypes.reverseDict[packetID])
-                    if p is not None: p.PrintString()
+                    self.logger.info("Server sent: " + GmPacketTypes.reverseDict[packetID])
+                    if packetID in self.printIn:
+                        p.PrintString()
             except:
                 traceback.print_exc()
-                print("Got unknown packet from server, id", packetID)
-                print("Server: ", packetID, header, data)
+                self.logger.info("Got unknown packet from server, id {}".format(packetID))
 
         #########################
         ######### Hooks #########
@@ -284,24 +288,23 @@ class ClientConnection:
                     self.ListenToServer()
 
             except ConnectionAbortedError as e:
-                print("Connection was aborted:", e)
+                self.logger.info("Connection was aborted: " + e)
                 self.Reset()
 
             except ConnectionResetError as e:
-                print("Connection was reset")
+                self.logger.info("Connection was reset")
                 self.Reset()
 
             except KeyboardInterrupt:
-                print("User aborted. Shutting down proxy.")
+                self.logger.info("User aborted. Shutting down proxy.")
                 self.connected = False
                 self.killSignal = True
                 self.Reset()
                 return
 
             except OSError as e:
-                # print(e, "(probably due to attempting to read from a socket that has been closed)")
                 traceback.print_exc()
-                print("Restarting proxy...")				
+                self.logger.info("Restarting proxy...")				
 
 
     # server -> client

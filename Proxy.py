@@ -1,7 +1,9 @@
 import threading
+import logging
 
 from multiprocessing import Process
 from ClientConnection import *
+from Logger import CreateLogger
 
 class Proxy:
 
@@ -12,6 +14,7 @@ class Proxy:
         self.managerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clientConnection = clientConnection
         self.serverMonitorThread = None
+        self.logger = logging.getLogger("Proxy")
 
     def ServerMonitor(self):
         """
@@ -22,7 +25,7 @@ class Proxy:
         # always listening for client connect
         while True:
             self.clientConnection.gameSocket, addr = self.managerSocket.accept()
-            print("Client connected.")
+            self.logger.info("Client connected.")
 
     def StartProxy(self):
         """
@@ -33,22 +36,24 @@ class Proxy:
         
 def main():
 
-    print("[Initializer]: Loading plugins...")
+    CreateLogger("logs")
+    logger = logging.getLogger("Main")
+
+    logger.info("[Initializer]: Loading plugins...")
     plugins = PluginManager()
     if not plugins.initialize():
-        print("Shutting down.")
+        logger.info("Shutting down.")
         return
 
     clientConnection = ClientConnection(plugins)
-    print("[Initializer]: Loading packet hooks...")
+    logger.info("[Initializer]: Loading packet hooks...")
     if not clientConnection.InitializePacketHooks():
-        print("Unable to initialize packet hooks. Shutting down")
+        logger.info("Unable to initialize packet hooks. Shutting down")
         return
     proxy = Proxy(clientConnection)
 
-    
     proxy.StartProxy()
-    print("[Initializer]: Started proxy.")
+    logger.info("[Initializer]: Started proxy.")
     clientConnection.ConnectRemote()
     clientConnection.Listen()
     
