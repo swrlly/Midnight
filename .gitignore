@@ -1,7 +1,7 @@
 **/__pycache__
 ClientHooks.py
 ClientConnectionBad.py
-.gitignores
+.gitignore
 debugging
 
 Plugins/CustomCommands.py
