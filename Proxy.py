@@ -1,5 +1,6 @@
 import threading
 import logging
+import pickle
 
 from multiprocessing import Process
 from ClientConnection import *
@@ -21,7 +22,7 @@ class Proxy:
         Look for clients connecting to localhost.
         """
         self.managerSocket.bind((self.localHostAddr, self.localHostPort))
-        self.managerSocket.listen(2)
+        self.managerSocket.listen(1)
         # always listening for client connect
         while True:
             self.clientConnection.gameSocket, addr = self.managerSocket.accept()
@@ -45,7 +46,11 @@ def main():
         logger.info("Shutting down.")
         return
 
-    clientConnection = ClientConnection(plugins)
+    with open("data/ProjectileDictionary.pkl", "rb") as f: projDict = pickle.load(f)
+    with open("data/AoeDictionary.pkl", "rb") as f: aoeDict = pickle.load(f)
+    with open("data/ItemDictionary.pkl", "rb") as f: itemDict = pickle.load(f)
+
+    clientConnection = ClientConnection(plugins, projDict, aoeDict, itemDict)
     logger.info("[Initializer]: Loading packet hooks...")
     if not clientConnection.InitializePacketHooks():
         logger.info("Unable to initialize packet hooks. Shutting down")

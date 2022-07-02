@@ -42,7 +42,7 @@ class TestPlugin(PluginInterface):
     """
 
     def OnHello(self, clientConnection: ClientConnection, packet: Hello, send: bool) -> (Hello, bool):
-        color = GameColor(255, 48, 187, 255)
+        color = GameColor(255, 179, 154, 240)
         clientConnection.CreateNotification(color, "Welcome to Midnight!") 
         return (packet, send)
 

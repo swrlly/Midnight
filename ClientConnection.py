@@ -16,13 +16,13 @@ import logging
 
 class ClientConnection:
 
-    def __init__(self, pm: PluginManager):
+    def __init__(self, pm: PluginManager, projDict, aoeDict, itemDict):
 
-        self.debug = True
+        self.debug = False
         self.firstUpdate = False
 
         # some parameters used throught the game
-        self.remoteHostAddr = "54.219.230.109"#"18.197.125.211"#
+        self.remoteHostAddr = "3.80.30.35"#"18.197.125.211"#"54.219.230.109"
         self.remoteHostPort = 6410
         # variables we use to keep track of client's state
         self.reconnecting = False
@@ -30,16 +30,20 @@ class ClientConnection:
         self.gameSocket = None
         self.serverSocket = None
         self.killSignal = False
-        self.pluginManager = pm
-        self.clientPacketHooks = {}
         self.nextX = 0
         self.nextY = 0
+        self.objectID = -1
+        self.pluginManager = pm
+        self.clientPacketHooks = {}
+        self.projDict = projDict
+        self.aoeDict = aoeDict
+        self.itemDict = itemDict
 
         # stuff to ignore when debugging
-        self.ignoreIn = [GmPacketTypes.Tiles, GmPacketTypes.Ping]#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
-        self.ignoreOut = [GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.Pong]#[GmPacketTypes.UpdateAck, GmPacketTypes.StartUpdate]#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
-        self.printOut = [GmPacketTypes.Create, GmPacketTypes.Load]
-        self.printIn = [GmPacketTypes.CreateResp]
+        self.ignoreIn = [GmPacketTypes.HealthUpdate, GmPacketTypes.Aoe, GmPacketTypes.ChallengeUpdated, GmPacketTypes.Chats, GmPacketTypes.Projectiles, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping, GmPacketTypes.Update, GmPacketTypes.Tiles]#[GmPacketTypes.Chats, GmPacketTypes.HealthUpdate, GmPacketTypes.Projectiles, GmPacketTypes.Tiles, GmPacketTypes.Update, GmPacketTypes.CheckPingAck, GmPacketTypes.Ping]
+        self.ignoreOut = [GmPacketTypes.Shoot, GmPacketTypes.Hit, GmPacketTypes.CheckPing, GmPacketTypes.ProjectilesAck, GmPacketTypes.Move, GmPacketTypes.UpdateAck, GmPacketTypes.Pong]#[GmPacketTypes.UpdateAck, GmPacketTypes.StartUpdate]#[GmPacketTypes.ProjectilesAck, GmPacketTypes.UpdateAck, GmPacketTypes.Move, GmPacketTypes.CheckPing, GmPacketTypes.Pong]
+        self.printOut = [GmPacketTypes.Hello, GmPacketTypes.Create, GmPacketTypes.Load]
+        self.printIn = [GmPacketTypes.ChallengeUpdated, GmPacketTypes.Reconnect, GmPacketTypes.Chats, GmPacketTypes.CreateResp, GmPacketTypes.MapInfo]
         self.logger = logging.getLogger("Client")
 
     def InitializePacketHooks(self) -> bool:
@@ -79,7 +83,6 @@ class ClientConnection:
     def ConnectRemote(self):
         while self.gameSocket == None:
             if self.killSignal: return
-
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverSocket.connect((self.remoteHostAddr, self.remoteHostPort))
 
@@ -148,12 +151,13 @@ class ClientConnection:
             p = ProcessPacket(packetID, data, False)
         except:
             pass
-
         
         if self.debug:
             try:
                 if packetID not in self.ignoreOut:
                     self.logger.info("Client sent: " + GmPacketTypes.reverseDict[packetID])
+                    if packetID == GmPacketTypes.EnterPortal:
+                        self.logger.info(data)
                     if packetID in self.printOut:
                         p.PrintString()
             except Exception as e:
@@ -230,9 +234,26 @@ class ClientConnection:
         ######### Hooks #########
         #########################
 
+        if packetID == GmPacketTypes.Update:
+            p, send = self.RoutePacket(p, send, self.OnUpdate)
+
+        if packetID == GmPacketTypes.MapInfo:
+            p, send = self.RoutePacket(p, send, self.OnMapInfo)
+
         if packetID == GmPacketTypes.Reconnect:
-            p.PrintString()
             p, send = self.RoutePacket(p, send, self.OnReconnect)
+
+        if packetID == GmPacketTypes.Projectiles:
+            p, send = self.RoutePacket(p, send, self.OnProjectiles)
+
+        if packetID == GmPacketTypes.MapInfo:
+            p, send = self.RoutePacket(p, send, self.OnMapInfo)
+
+        if packetID == GmPacketTypes.HealthUpdate:
+            p, send = self.RoutePacket(p, send, self.OnHealthUpdate)
+
+        if packetID == GmPacketTypes.Failure:
+            self.Reset()
 
         reassembledPacket = WritePacket(p) if p != None else WritePacketRaw(header, data)
         if send: self.SendPacketToClient(reassembledPacket)
@@ -287,12 +308,18 @@ class ClientConnection:
                 if self.serverSocket in ready:
                     self.ListenToServer()
 
+                for plugin in self.pluginManager.plugins:
+                    try: getattr(plugin, "Main")(self)
+                    except AttributeError: pass
+
             except ConnectionAbortedError as e:
-                self.logger.info("Connection was aborted: " + e)
+                self.logger.info("Connection was aborted")
                 self.Reset()
 
             except ConnectionResetError as e:
                 self.logger.info("Connection was reset")
+                self.remoteHostAddr = "3.80.30.35"
+                self.remoteHostPort = 6410
                 self.Reset()
 
             except KeyboardInterrupt:
@@ -304,16 +331,27 @@ class ClientConnection:
 
             except OSError as e:
                 traceback.print_exc()
-                self.logger.info("Restarting proxy...")				
+                self.logger.info("Restarting proxy...")	
+                self.Reset()
+
+            except Exception as e:
+                self.logger.info("General catchall.")
+                traceback.print_exc()
+                self.remoteHostAddr = "3.80.30.35"
+                self.remoteHostPort = 6410
+                self.Reset()
 
 
     # server -> client
     def SendPacketToClient(self, p):
-        self.gameSocket.sendall(p)
+        try: self.gameSocket.sendall(p)
+        except Exception: raise Exception("Error when sending packet")
 
     # client -> server
     def SendPacketToServer(self, p):
-        self.serverSocket.sendall(p)
+        try: self.serverSocket.sendall(p)
+        except Exception: raise Exception("Error when sending packet")
+
 
 ################################################
 ##### packet hooks and extra functionality #####
@@ -332,6 +370,14 @@ def OnReconnect(self, p: Reconnect, send: bool) -> (Reconnect, bool):
     self.remoteHostPort = p.port
     p.host = "127.0.0.1"
     p.port = 6410
+    return p, send
+
+@extends(ClientConnection)
+def OnHealthUpdate(self, p: HealthUpdate, send: bool) -> (HealthUpdate, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnProjectiles(self, p: Projectiles, send: bool) -> (Projectiles, bool):
     return p, send
 
 @extends(ClientConnection)
@@ -395,6 +441,12 @@ def OnMapInfoAck(self, p: MapInfoAck, send: bool) -> (MapInfoAck, bool):
     return p, send
 
 @extends(ClientConnection)
+def OnMapInfo(self, p: MapInfo, send: bool) -> (MapInfo, bool):
+    self.firstUpdate = False
+    self.objectID = p.playerID
+    return p, send
+
+@extends(ClientConnection)
 def OnMessage(self, p: Message, send: bool) -> (Message, bool):
     return p, send
 
@@ -422,6 +474,17 @@ def OnStartUpdate(self, p: StartUpdate, send: bool) -> (StartUpdate, bool):
 
 @extends(ClientConnection)
 def OnSwap(self, p: Swap, send: bool) -> (Swap, bool):
+    return p, send
+
+@extends(ClientConnection)
+def OnUpdate(self, p: Update, send: bool) -> (Update, bool):
+    for obj in p.objectStats:
+        if obj.objectID == self.objectID:
+            for stat in obj.stats:
+                if stat.statType == 75:
+                    self.currentX = stat.value.x
+                    self.currentY = stat.value.y
+
     return p, send
 
 @extends(ClientConnection)
